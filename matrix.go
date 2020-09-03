@@ -7,7 +7,19 @@ import (
 
 type Matrix struct {
 	data [][]float64
-	dim int
+	rows, cols int
+}
+
+func (mat *Matrix) Rows() int {
+	return mat.rows
+}
+
+func (mat *Matrix) Cols() int {
+	return mat.cols
+}
+
+func (mat *Matrix) IsSquare() bool {
+	return mat.rows == mat.cols
 }
 
 func InitMat(data [][]float64) (*Matrix, error) {
@@ -15,23 +27,43 @@ func InitMat(data [][]float64) (*Matrix, error) {
 		return &Matrix{}, nil
 	}
 
-	dim := len(data)
+	rows := len(data)
+	cols := len(data[0])
 	for _, d := range data {
-		if len(d) != dim {
-			return nil, errors.New("matrix isn't square")
+		if len(d) != cols {
+			return nil, errors.New("could't create matrix")
 		}
 	}
 
-	return &Matrix{data: data, dim: dim}, nil
+	return &Matrix{data: data, rows: rows, cols: cols}, nil
 }
 
-func InitMatOfDim(dim int) *Matrix {
+func InitMatOfDim(dim int) (*Matrix, error) {
+	if dim < 0 {
+		return nil, errors.New("wrong dimention")
+	}
+
 	data := make([][]float64, dim)
 	for i := range data {
 		data[i] = make([]float64, dim)
 	}
 	mat, _ := InitMat(data)
-	return mat
+
+	return mat, nil
+}
+
+func InitMatOfDims(rows, cols int) (*Matrix, error) {
+	if rows < 0 || cols < 0 {
+		return nil, errors.New("wrong dimentions")
+	}
+
+	data := make([][]float64, rows)
+	for i := range data {
+		data[i] = make([]float64, cols)
+	}
+	mat, _ := InitMat(data)
+
+	return mat, nil
 }
 
 func VectsEq(a, b []float64) bool {
@@ -49,7 +81,7 @@ func VectsEq(a, b []float64) bool {
 }
 
 func MatsEq(a, b *Matrix) bool {
-	if a.dim != b.dim {
+	if a.rows != b.rows || a.cols != b.cols {
 		return false
 	}
 
@@ -111,11 +143,11 @@ func ScalarProd(a, b []float64) (float64, error) {
 }
 
 func MatVecMul(a *Matrix, x []float64) ([]float64, error) {
-	if a.dim == 0 {
+	if a.rows == 0 {
 		return nil, errors.New("matrix is empty")
 	}
 
-	if a.dim != len(x) {
+	if a.rows != len(x) {
 		return nil, errors.New("matrix and vector dims don't match")
 	}
 
@@ -129,7 +161,7 @@ func MatVecMul(a *Matrix, x []float64) ([]float64, error) {
 }
 
 func TransposeMat(mat *Matrix) *Matrix {
-	transMat := InitMatOfDim(mat.dim)
+	transMat, _ := InitMatOfDims(mat.rows, mat.cols)
 
 	for i, _ := range mat.data {
 		for j, _ := range mat.data {
@@ -141,11 +173,11 @@ func TransposeMat(mat *Matrix) *Matrix {
 }
 
 func MatMul(a, b *Matrix) (*Matrix, error) {
-	if a.dim != b.dim {
+	if a.cols != b.rows {
 		return nil, errors.New("matrix dims don't match")
 	}
 
-	transRes := InitMatOfDim(a.dim)
+	transRes, _ := InitMatOfDims(b.rows, b.cols)
 
 	transB := TransposeMat(b)
 	for i, bi := range transB.data {
