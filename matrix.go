@@ -313,10 +313,6 @@ func SwitchCols(mat *Matrix, i, j int) (*Matrix, error) {
 }
 
 func forwElim(a *Matrix, f []float64) (*Matrix, []float64, error) {
-	if len(a.data) == 0 || len(f) == 0 {
-		return nil, nil, errors.New("matrix or free element is empty")
-	}
-
 	resMat := &Matrix{data: copy2dSlice(a.data), rows: a.rows, cols: a.cols}
 	resF := f
 
@@ -360,4 +356,37 @@ func forwElim(a *Matrix, f []float64) (*Matrix, []float64, error) {
 	}
 
 	return resMat, resF, nil
+}
+
+func backSubs(a *Matrix, f []float64) []float64 {
+	x := make([]float64, len(f))
+
+	x[len(x) - 1] = f[len(f) - 1]
+
+	for i := a.rows - 2; i >= 0; i-- {
+		x[i] = f[i]
+		for j := a.cols - 1; j > i; j-- {
+			x[i] -= a.data[i][j] * x[j]
+		}
+	}
+
+	return x
+}
+
+func Gauss(a *Matrix, f []float64) ([]float64, error) {
+	if a.rows != len(f) {
+		return nil, errors.New("matrix and free element dims don't match")
+	}
+	if a.rows == 0 || len(f) == 0 {
+		return nil, errors.New("matrix or free element is empty")
+	}
+
+	diagMat, newF, err := forwElim(a, f)
+	if err != nil {
+		return nil, err
+	}
+
+	res := backSubs(diagMat, newF)
+
+	return res, nil
 }

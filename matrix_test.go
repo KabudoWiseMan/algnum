@@ -1,6 +1,7 @@
 package algnum
 
 import (
+	"fmt"
 	"math/rand"
 	"testing"
 )
@@ -141,21 +142,27 @@ func randFree(dim int, min, max float64) []float64 {
 	return res
 }
 
-func TestForwElim(t *testing.T) {
-	//data := [][]float64{
-	//	{0, 2, 3},
-	//	{4, 5, 6},
-	//	{7, 8, 9},
-	//}
-	data := randData(5, 5, 0, 10)
+func TestGauss(t *testing.T) {
+	data := [][]float64{
+		{0, 2, 3},
+		{4, 5, 6},
+		{7, 8, 9},
+	}
+	//data := randData(100, 100, 0, 10)
 	mat, _ := InitMat(data)
-	//f := []float64{1, 2, 3}
-	f := randFree(5, 0, 10)
+	fmt.Println(mat.ToStr())
+	f := []float64{1, 2, 3}
+	//f := randFree(100, 0, 10)
+	fmt.Println(f)
 
-	diag, nf, err := forwElim(mat, f)
+	expectedRes := []float64{0, 0, float64(1)/float64(3)}
+
+	res, err := Gauss(mat, f)
 	if err != nil {
 		t.Fatal(err)
+	} else if !VectsEq(expectedRes, res) {
+		t.Fatalf("result is wrong: expected\n %s,\ngot\n %s", VectToStr(expectedRes), VectToStr(res))
 	} else {
-		t.Log("forward elimitanion works correct: ", diag.ToStr(), nf)
+		t.Log("gauss works correct, result")
 	}
 }
