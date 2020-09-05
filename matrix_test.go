@@ -1,6 +1,7 @@
 package algnum
 
 import (
+	"math/rand"
 	"testing"
 )
 
@@ -68,8 +69,93 @@ func TestMatMul(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	} else if !MatsEq(res, expectedRes) {
-		t.Fatalf("result is wrong: expected\n %s,\ngot\n %s", expectedRes.toStr(), res.toStr())
+		t.Fatalf("result is wrong: expected\n %s,\ngot\n %s", expectedRes.ToStr(), res.ToStr())
 	} else {
 		t.Log("matrixs multiplication works correct")
+	}
+}
+
+func TestSwitches(t *testing.T) {
+	data := [][]float64{
+		{1, 2, 3},
+		{4, 5, 6},
+		{7, 8, 9},
+	}
+	mat, _ := InitMat(data)
+
+	expSwitchRowsData := [][]float64{
+		{4, 5, 6},
+		{1, 2, 3},
+		{7, 8, 9},
+	}
+	expSwitchRows, _ := InitMat(expSwitchRowsData)
+
+	expSwitchColsData := [][]float64{
+		{2, 1, 3},
+		{5, 4, 6},
+		{8, 7, 9},
+	}
+	expSwitchCols, _ := InitMat(expSwitchColsData)
+
+	switchRows, err := SwitchRows(mat, 0, 1)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	switchCols, err := SwitchCols(mat, 0, 1)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if !MatsEq(expSwitchRows, switchRows) {
+		t.Fatalf("switch rows is wrong: expected\n %s,\ngot\n %s", expSwitchRows.ToStr(), switchRows.ToStr())
+	}
+	if !MatsEq(expSwitchCols, switchCols) {
+		t.Fatalf("switch cols is wrong: expected\n %s,\ngot\n %s", expSwitchCols.ToStr(), switchCols.ToStr())
+	}
+
+	t.Log("switches work correct")
+}
+
+func randData(rows, cols int, min, max float64) [][]float64 {
+	res := make([][]float64, rows)
+	for i := range res {
+		res[i] = make([]float64, cols)
+	}
+
+	for i := range res {
+		for j := range res {
+			res[i][j] = min + rand.Float64() * (max - min)
+		}
+	}
+
+	return res
+}
+
+func randFree(dim int, min, max float64) []float64 {
+	res := make([]float64, dim)
+	for i := range res {
+		res[i] = min + rand.Float64() * (max - min)
+	}
+
+	return res
+}
+
+func TestForwElim(t *testing.T) {
+	//data := [][]float64{
+	//	{0, 2, 3},
+	//	{4, 5, 6},
+	//	{7, 8, 9},
+	//}
+	data := randData(5, 5, 0, 10)
+	mat, _ := InitMat(data)
+	//f := []float64{1, 2, 3}
+	f := randFree(5, 0, 10)
+
+	diag, nf, err := forwElim(mat, f)
+	if err != nil {
+		t.Fatal(err)
+	} else {
+		t.Log("forward elimitanion works correct: ", diag.ToStr(), nf)
 	}
 }
