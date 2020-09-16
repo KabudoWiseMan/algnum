@@ -3,7 +3,10 @@ package algnum
 import (
 	"errors"
 	"fmt"
+	"math"
 )
+
+const epsilon = 1e-9
 
 type Matrix struct {
 	data [][]float64
@@ -90,7 +93,7 @@ func VectsEq(a, b []float64) bool {
 	}
 
 	for i, ai := range a {
-		if ai != b[i] {
+		if math.Abs(ai - b[i]) >= epsilon {
 			return false
 		}
 	}
@@ -115,7 +118,7 @@ func MatsEq(a, b *Matrix) bool {
 func VectToStr(a []float64) string {
 	res := "["
 	for _, ai := range a {
-		res += fmt.Sprintf("%f", ai) + ", "
+		res += fmt.Sprintf("%0.15f", ai) + ", "
 	}
 	if len(res) > 1 {
 		res = res[:len(res) - 2]
@@ -225,7 +228,8 @@ func SwitchVecEls(a []float64, i, j int) ([]float64, error) {
 		return nil, errors.New("wrong indexes")
 	}
 
-	res := a
+	res := make([]float64, len(a))
+	copy(res, a)
 
 	remember := res[i]
 	res[i] = res[j]
@@ -314,36 +318,34 @@ func SwitchCols(mat *Matrix, i, j int) (*Matrix, error) {
 
 func forwElim(a *Matrix, f []float64) (*Matrix, []float64, error) {
 	resMat := &Matrix{data: copy2dSlice(a.data), rows: a.rows, cols: a.cols}
-	resF := f
+	resF := make([]float64, len(f))
+	copy(resF, f)
 
 	for i := range resMat.data {
-		leadEl := resMat.data[i][i]
-		if leadEl == 0 {
-			for j := i; j < resMat.rows; j++ {
-				if leadEl = resMat.data[j][i]; leadEl != 0 {
-					if j == 0 {
-						break
-					}
-					resMat, _ = SwitchRows(resMat, 0, j)
-					resF, _ = SwitchVecEls(resF, 0, j)
-					break
-				}
+		leadElMod := math.Abs(resMat.data[i][i])
+
+		k := i
+		for j := i; j < resMat.rows; j++ {
+			if math.Abs(resMat.data[j][i]) > leadElMod {
+				k = j
 			}
 		}
 
+		if k != i {
+			resMat, _ = SwitchRows(resMat, i, k)
+			resF, _ = SwitchVecEls(resF, i, k)
+		}
+
+		leadEl := resMat.data[i][i]
 		if leadEl == 0 {
-			if resF[i] == 0 {
-				return nil, nil, errors.New("system has infinite solutions")
-			} else {
-				return nil, nil, errors.New("system has no solutions")
-			}
+			return nil, nil, errors.New("system is not inconsistent")
 		}
 
 		resMat.data[i][i] = 1
 		for j := i + 1; j < resMat.rows; j++ {
 			resMat.data[i][j] /= leadEl
 		}
-		f[i] /= leadEl
+		resF[i] /= leadEl
 
 		for j := i + 1; j < resMat.rows; j++ {
 			el := resMat.data[j][i]
@@ -385,6 +387,7 @@ func Gauss(a *Matrix, f []float64) ([]float64, error) {
 	if err != nil {
 		return nil, err
 	}
+	//fmt.Println("\ndiag:\n", diagMat.ToStr())
 
 	res := backSubs(diagMat, newF)
 
