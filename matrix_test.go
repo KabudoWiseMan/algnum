@@ -128,7 +128,7 @@ func randData(rows, cols int, max int) [][]float64 {
 
 	for i := range res {
 		for j := range res {
-			res[i][j] = float64(rand.Intn(max) + 1)
+			res[i][j] = float64(rand.Intn(2 * max) - max)
 		}
 	}
 
@@ -140,7 +140,7 @@ func randFree(dim int, max int) []float64 {
 
 	res := make([]float64, dim)
 	for i := range res {
-		res[i] = float64(rand.Intn(max) + 1)
+		res[i] = float64(rand.Intn(2 * max) - max)
 	}
 
 	return res
