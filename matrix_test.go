@@ -118,7 +118,7 @@ func TestSwitches(t *testing.T) {
 	t.Log("switches work correct")
 }
 
-func randData(rows, cols int, max int) [][]float64 {
+func randData(rows, cols int, min, max int) [][]float64 {
 	rand.Seed(time.Now().UnixNano())
 
 	res := make([][]float64, rows)
@@ -128,19 +128,19 @@ func randData(rows, cols int, max int) [][]float64 {
 
 	for i := range res {
 		for j := range res {
-			res[i][j] = float64(rand.Intn(2 * max) - max)
+			res[i][j] = float64(rand.Intn(max - min) + min)
 		}
 	}
 
 	return res
 }
 
-func randFree(dim int, max int) []float64 {
+func randFree(dim int, min, max int) []float64 {
 	rand.Seed(time.Now().UnixNano())
 
 	res := make([]float64, dim)
 	for i := range res {
-		res[i] = float64(rand.Intn(2 * max) - max)
+		res[i] = float64(rand.Intn(max - min) + min)
 	}
 
 	return res
@@ -222,9 +222,9 @@ func TestGauss(t *testing.T) {
 		t.Log("result is wrong, input:\nA = ", mat4.ToStr(), "\nf = ", VectToStr(f4), "\nexpected error, got:\n", VectToStr(res4))
 	}
 
-	dataN := randData(100, 100, 1000)
+	dataN := randData(100, 100, 1, 1000)
 	matN, _ := InitMat(dataN)
-	fN := randFree(100, 1000)
+	fN := randFree(100, 1, 1000)
 
 	resN, err := Gauss(matN, fN)
 	if err != nil {

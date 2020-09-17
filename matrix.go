@@ -87,6 +87,27 @@ func InitMatOfDims(rows, cols int) (*Matrix, error) {
 	return &Matrix{data: data, rows: rows, cols: cols}, nil
 }
 
+func (m *Matrix)isDiagDominant() bool {
+	if !m.IsSquare() {
+		return false
+	}
+	for i := 0; i < m.rows; i++ {
+		aii := math.Abs(m.data[i][i])
+		var sum float64
+		for j := 0; j < m.cols; i++ {
+			if j == i {
+				continue
+			}
+			sum += math.Abs(m.data[i][j])
+			if aii < sum {
+				return false
+			}
+		}
+	}
+
+	return true
+}
+
 func VectsEq(a, b []float64) bool {
 	if len(a) != len(b) {
 		return false
@@ -327,6 +348,7 @@ func forwElim(a *Matrix, f []float64) (*Matrix, []float64, error) {
 		k := i
 		for j := i; j < resMat.rows; j++ {
 			if math.Abs(resMat.data[j][i]) > leadElMod {
+				leadElMod = math.Abs(resMat.data[j][i])
 				k = j
 			}
 		}
