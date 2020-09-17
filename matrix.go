@@ -6,7 +6,7 @@ import (
 	"math"
 )
 
-const epsilon = 1e-9
+const epsilon = 1e-6
 
 type Matrix struct {
 	data [][]float64
@@ -387,7 +387,6 @@ func Gauss(a *Matrix, f []float64) ([]float64, error) {
 	if err != nil {
 		return nil, err
 	}
-	//fmt.Println("\ndiag:\n", diagMat.ToStr())
 
 	res := backSubs(diagMat, newF)
 

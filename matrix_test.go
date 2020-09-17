@@ -3,6 +3,7 @@ package algnum
 import (
 	"math/rand"
 	"testing"
+	"time"
 )
 
 func TestScalarProd(t *testing.T) {
@@ -118,6 +119,8 @@ func TestSwitches(t *testing.T) {
 }
 
 func randData(rows, cols int, max int) [][]float64 {
+	rand.Seed(time.Now().UnixNano())
+
 	res := make([][]float64, rows)
 	for i := range res {
 		res[i] = make([]float64, cols)
@@ -133,6 +136,8 @@ func randData(rows, cols int, max int) [][]float64 {
 }
 
 func randFree(dim int, max int) []float64 {
+	rand.Seed(time.Now().UnixNano())
+
 	res := make([]float64, dim)
 	for i := range res {
 		res[i] = float64(rand.Intn(max) + 1)
