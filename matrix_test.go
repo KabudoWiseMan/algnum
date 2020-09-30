@@ -37,7 +37,7 @@ func TestMatVecMul(t *testing.T) {
 
 	if err != nil {
 		t.Fatal(err)
-	} else if !VectsEq(res, expectedRes) {
+	} else if !VectsEq(res, expectedRes, Epsilon) {
 		t.Fatalf("result is wrong: expected %s, got %s", VectToStr(expectedRes), VectToStr(res))
 	} else {
 		t.Log("matrix to vector multiplication works correct")
@@ -69,7 +69,7 @@ func TestMatMul(t *testing.T) {
 	res, err := MatMul(a, b)
 	if err != nil {
 		t.Fatal(err)
-	} else if !MatsEq(res, expectedRes) {
+	} else if !MatsEq(res, expectedRes, Epsilon) {
 		t.Fatalf("result is wrong: expected\n %s,\ngot\n %s", expectedRes.ToStr(), res.ToStr())
 	} else {
 		t.Log("matrixs multiplication works correct")
@@ -108,10 +108,10 @@ func TestSwitches(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	if !MatsEq(expSwitchRows, switchRows) {
+	if !MatsEq(expSwitchRows, switchRows, Epsilon) {
 		t.Fatalf("switch rows is wrong: expected\n %s,\ngot\n %s", expSwitchRows.ToStr(), switchRows.ToStr())
 	}
-	if !MatsEq(expSwitchCols, switchCols) {
+	if !MatsEq(expSwitchCols, switchCols, Epsilon) {
 		t.Fatalf("switch cols is wrong: expected\n %s,\ngot\n %s", expSwitchCols.ToStr(), switchCols.ToStr())
 	}
 
@@ -148,19 +148,19 @@ func randFree(dim int, min, max int) []float64 {
 
 func TestGauss(t *testing.T) {
 	data := [][]float64{
-		{0, 2, 3},
-		{4, 5, 6},
-		{7, 8, 9},
+		{3, 2, 1},
+		{1, 3, 2},
+		{1, 2, 4},
 	}
 	mat, _ := InitMat(data)
-	f := []float64{1, 2, 3}
+	f := []float64{1, 4, 2}
 
-	expectedRes := []float64{0, 0, float64(1)/float64(3)}
+	expectedRes := []float64{-float64(14)/float64(19), float64(32)/float64(19), -float64(3)/float64(19)}
 
 	res, err := Gauss(mat, f)
 	if err != nil {
 		t.Fatal(err)
-	} else if !VectsEq(expectedRes, res) {
+	} else if !VectsEq(expectedRes, res, Epsilon) {
 		t.Fatalf("result is wrong: expected\n %s,\ngot\n %s", VectToStr(expectedRes), VectToStr(res))
 	} else {
 		t.Log("gauss works correct, input:\nA = ", mat.ToStr(), "\nf = ", VectToStr(f), "\nresult:", VectToStr(res))
@@ -179,7 +179,7 @@ func TestGauss(t *testing.T) {
 	res2, err := Gauss(mat2, f2)
 	if err != nil {
 		t.Fatal(err)
-	} else if !VectsEq(expectedRes2, res2) {
+	} else if !VectsEq(expectedRes2, res2, Epsilon) {
 		t.Fatalf("result is wrong: expected\n %s,\ngot\n %s", VectToStr(expectedRes2), VectToStr(res2))
 	} else {
 		t.Log("gauss works correct, input:\nA = ", mat2.ToStr(), "\nf = ", VectToStr(f2), "\nresult:", VectToStr(res2))
@@ -201,7 +201,7 @@ func TestGauss(t *testing.T) {
 	res3, err := Gauss(mat3, f3)
 	if err != nil {
 		t.Fatal(err)
-	} else if !VectsEq(expectedRes3, res3) {
+	} else if !VectsEq(expectedRes3, res3, Epsilon) {
 		t.Fatalf("result is wrong: expected\n %s,\ngot\n %s", VectToStr(expectedRes3), VectToStr(res3))
 	} else {
 		t.Log("gauss works correct, input:\nA = ", mat3.ToStr(), "\nf = ", VectToStr(f3), "\nresult:", VectToStr(res3))
@@ -219,7 +219,7 @@ func TestGauss(t *testing.T) {
 	if err != nil {
 		t.Log("gauss works correct, got expected error:", err)
 	} else {
-		t.Log("result is wrong, input:\nA = ", mat4.ToStr(), "\nf = ", VectToStr(f4), "\nexpected error, got:\n", VectToStr(res4))
+		t.Fatal("result is wrong, input:\nA = ", mat4.ToStr(), "\nf = ", VectToStr(f4), "\nexpected error, got:\n", VectToStr(res4))
 	}
 
 	dataN := randData(100, 100, 1, 1000)
@@ -233,7 +233,7 @@ func TestGauss(t *testing.T) {
 	check, err := MatVecMul(matN, resN)
 	if err != nil {
 		t.Fatal(err)
-	} else if !VectsEq(fN, check) {
+	} else if !VectsEq(fN, check, Epsilon) {
 		t.Fatalf("result is wrong, input:\nA = %s\nf = %s\nres = %s\ncheck:%s", matN.ToStr(), VectToStr(fN), VectToStr(resN), VectToStr(check))
 	} else {
 		t.Log("gauss works correct, input:\nA = ", matN.ToStr(), "\nf = ", VectToStr(fN), "\nresult:", VectToStr(resN), "\ncheck:", VectToStr(check))
@@ -251,7 +251,7 @@ func TestGauss(t *testing.T) {
 	res5, err := Gauss(mat5, f5)
 	if err != nil {
 		t.Fatal(err)
-	} else if !VectsEq(expectedRes5, res5) {
+	} else if !VectsEq(expectedRes5, res5, Epsilon) {
 		t.Fatalf("result is wrong: expected\n %s,\ngot\n %s", VectToStr(expectedRes5), VectToStr(res5))
 	} else {
 		t.Log("gauss works correct, input:\nA = ", mat5.ToStr(), "\nf = ", VectToStr(f5), "\nresult:", VectToStr(res5))

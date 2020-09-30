@@ -6,7 +6,7 @@ import (
 	"math"
 )
 
-const epsilon = 1e-6
+const Epsilon = 1e-6
 
 type Matrix struct {
 	data [][]float64
@@ -94,7 +94,7 @@ func (m *Matrix)isDiagDominant() bool {
 	for i := 0; i < m.rows; i++ {
 		aii := math.Abs(m.data[i][i])
 		var sum float64
-		for j := 0; j < m.cols; i++ {
+		for j := 0; j < m.cols; j++ {
 			if j == i {
 				continue
 			}
@@ -108,13 +108,13 @@ func (m *Matrix)isDiagDominant() bool {
 	return true
 }
 
-func VectsEq(a, b []float64) bool {
+func VectsEq(a, b []float64, eps float64) bool {
 	if len(a) != len(b) {
 		return false
 	}
 
 	for i, ai := range a {
-		if math.Abs(ai - b[i]) >= epsilon {
+		if math.Abs(ai - b[i]) >= eps {
 			return false
 		}
 	}
@@ -122,13 +122,13 @@ func VectsEq(a, b []float64) bool {
 	return true
 }
 
-func MatsEq(a, b *Matrix) bool {
+func MatsEq(a, b *Matrix, eps float64) bool {
 	if a.rows != b.rows || a.cols != b.cols {
 		return false
 	}
 
 	for i, ai := range a.data {
-		if !VectsEq(ai, b.data[i]) {
+		if !VectsEq(ai, b.data[i], eps) {
 			return false
 		}
 	}
@@ -252,9 +252,7 @@ func SwitchVecEls(a []float64, i, j int) ([]float64, error) {
 	res := make([]float64, len(a))
 	copy(res, a)
 
-	remember := res[i]
-	res[i] = res[j]
-	res[j] = remember
+	res[i], res[j] = res[j], res[i]
 
 	return res, nil
 }
@@ -314,9 +312,7 @@ func SwitchRows(mat *Matrix, i, j int) (*Matrix, error) {
 
 	resData := copy2dSlice(mat.data)
 
-	remember := resData[i]
-	resData[i] = resData[j]
-	resData[j] = remember
+	resData[i], resData[j] = resData[j], resData[i]
 
 	return &Matrix{data: resData, rows: mat.rows, cols: mat.cols}, nil
 }
@@ -329,9 +325,7 @@ func SwitchCols(mat *Matrix, i, j int) (*Matrix, error) {
 	resData := copy2dSlice(mat.data)
 
 	for k := range resData {
-		remember := resData[k][i]
-		resData[k][i] = resData[k][j]
-		resData[k][j] = remember
+		resData[k][i], resData[k][j] = resData[k][j], resData[k][i]
 	}
 
 	return &Matrix{data: resData, rows: mat.rows, cols: mat.cols}, nil
@@ -343,25 +337,7 @@ func forwElim(a *Matrix, f []float64) (*Matrix, []float64, error) {
 	copy(resF, f)
 
 	for i := range resMat.data {
-		leadElMod := math.Abs(resMat.data[i][i])
-
-		k := i
-		for j := i; j < resMat.rows; j++ {
-			if math.Abs(resMat.data[j][i]) > leadElMod {
-				leadElMod = math.Abs(resMat.data[j][i])
-				k = j
-			}
-		}
-
-		if k != i {
-			resMat, _ = SwitchRows(resMat, i, k)
-			resF, _ = SwitchVecEls(resF, i, k)
-		}
-
 		leadEl := resMat.data[i][i]
-		if leadEl == 0 {
-			return nil, nil, errors.New("system is not inconsistent")
-		}
 
 		resMat.data[i][i] = 1
 		for j := i + 1; j < resMat.rows; j++ {
@@ -397,6 +373,105 @@ func backSubs(a *Matrix, f []float64) []float64 {
 	return x
 }
 
+func forwElimLeadEl(a *Matrix, f []float64) (*Matrix, []float64, []int, error) {
+	n := a.rows
+
+	resMat := &Matrix{data: copy2dSlice(a.data), rows: n, cols: n}
+	resF := make([]float64, n)
+	copy(resF, f)
+
+	idxs := make([]int, n)
+	for i := range idxs {
+		idxs[i] = i
+	}
+
+	for i := 0; i < n; i++ {
+		// with leading col element
+		leadColElMod := math.Abs(resMat.data[i][i])
+
+		k := i
+		for j := i + 1; j < n; j++ {
+			if math.Abs(resMat.data[j][i]) > leadColElMod {
+				leadColElMod = math.Abs(resMat.data[j][i])
+				k = j
+			}
+		}
+
+		if leadColElMod == 0 {
+			return nil, nil, nil, errors.New("system is not inconsistent")
+		}
+
+		if k != i {
+			for j := i; j < n; j++ {
+				resMat.data[i][j], resMat.data[k][j] = resMat.data[k][j], resMat.data[i][j]
+			}
+			resF[i], resF[k] = resF[k], resF[i]
+		}
+
+		leadEl := resMat.data[i][i]
+
+		for j := i + 1; j < n; j++ {
+			c := -resMat.data[j][i] / leadEl
+			for l := i; l < n; l++ {
+				resMat.data[j][l] += resMat.data[i][l] * c
+			}
+			resF[j] += resF[i] * c
+		}
+
+		// with leading row element
+		leadRowElMod := math.Abs(resMat.data[i][i])
+
+		k = i
+		for j := i + 1; j < n; j++ {
+			if math.Abs(resMat.data[i][j]) > leadRowElMod {
+				leadRowElMod = math.Abs(resMat.data[i][j])
+				k = j
+			}
+		}
+
+		if leadRowElMod == 0 {
+			return nil, nil, nil, errors.New("system is not inconsistent")
+		}
+
+		if k != i {
+			for j := 0; j < n; j++ {
+				resMat.data[j][i], resMat.data[j][k] = resMat.data[j][k], resMat.data[j][i]
+			}
+		}
+		idxs[i], idxs[k] = idxs[k], idxs[i]
+
+		leadEl = resMat.data[i][i]
+
+		for j := i + 1; j < n; j++ {
+			c := -resMat.data[j][i] / leadEl
+			for l := i; l < n; l++ {
+				resMat.data[j][l] += resMat.data[i][l] * c
+			}
+			resF[j] += resF[i] * c
+		}
+	}
+
+	return resMat, resF, idxs, nil
+}
+
+func backSubsLeadEl(a *Matrix, f []float64, idxs []int) []float64 {
+	n := a.rows
+
+	x := make([]float64, n)
+
+	x[idxs[n - 1]] = f[n - 1] / a.data[n - 1][n - 1]
+
+	for i := n - 2; i >= 0; i-- {
+		x[idxs[i]] = f[i]
+		for j := n - 1; j > i; j-- {
+			x[idxs[i]] -= a.data[i][j] * x[idxs[j]]
+		}
+		x[idxs[i]] /= a.data[i][i]
+	}
+
+	return x
+}
+
 func Gauss(a *Matrix, f []float64) ([]float64, error) {
 	if a.rows != len(f) {
 		return nil, errors.New("matrix and free element dims don't match")
@@ -404,13 +479,27 @@ func Gauss(a *Matrix, f []float64) ([]float64, error) {
 	if a.rows == 0 || len(f) == 0 {
 		return nil, errors.New("matrix or free element is empty")
 	}
-
-	diagMat, newF, err := forwElim(a, f)
-	if err != nil {
-		return nil, err
+	if !a.IsSquare() {
+		return nil, errors.New("matrix isn't square")
 	}
 
-	res := backSubs(diagMat, newF)
+	if a.isDiagDominant() {
+		diagMat, newF, err := forwElim(a, f)
+		if err != nil {
+			return nil, err
+		}
 
-	return res, nil
+		res := backSubs(diagMat, newF)
+
+		return res, nil
+	} else {
+		diagMat, newF, idxs, err := forwElimLeadEl(a, f)
+		if err != nil {
+			return nil, err
+		}
+
+		res := backSubsLeadEl(diagMat, newF, idxs)
+
+		return res, nil
+	}
 }
