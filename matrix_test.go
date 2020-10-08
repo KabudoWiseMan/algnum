@@ -257,3 +257,138 @@ func TestGauss(t *testing.T) {
 		t.Log("gauss works correct, input:\nA = ", mat5.ToStr(), "\nf = ", VectToStr(f5), "\nresult:", VectToStr(res5))
 	}
 }
+
+func TestMatrix_Det(t *testing.T) {
+	data := [][]float64{
+		{3, 2, 1},
+		{1, 3, 2},
+		{1, 2, 4},
+	}
+	mat, _ := InitMat(data)
+
+	expectedRes := float64(19)
+
+	res, err := mat.Det()
+	if err != nil {
+		t.Fatal(err)
+	} else if res != expectedRes {
+		t.Fatalf("result is wrong: expected %0.15f, got %0.15f", expectedRes, res)
+	} else {
+		t.Log("det works correct")
+	}
+}
+
+func TestMatrix_Inverse(t *testing.T) {
+	data := [][]float64{
+		{3, 2, 1},
+		{1, 3, 2},
+		{1, 2, 4},
+	}
+	mat, _ := InitMat(data)
+
+	expectedRes := [][]float64{
+		{float64(8) / float64(19), float64(-6) / float64(19), float64(1) / float64(19)},
+		{float64(-2) / float64(19), float64(11) / float64(19), float64(-5) / float64(19)},
+		{float64(-1) / float64(19), float64(-4) / float64(19), float64(7) / float64(19)},
+	}
+	exp, _ := InitMat(expectedRes)
+
+	res, err := mat.Inverse()
+	if err != nil {
+		t.Fatal(err)
+	} else if !MatsEq(exp, res, Epsilon) {
+		t.Fatalf("result is wrong: expected\n %s,\ngot\n %s", exp.ToStr(), res.ToStr())
+	} else {
+		t.Log("inverse matrix works correct")
+	}
+}
+
+func TestPerturbations2(t *testing.T) {
+	data := [][]float64{
+		{7, 2},
+		{1, 4},
+	}
+	A, _ := InitMat(data)
+
+	dataDA := [][]float64{
+		{1, 3},
+		{4, 1},
+	}
+	dA, _ := InitMat(dataDA)
+
+	f := []float64{53, 76}
+	df := []float64{3, 1}
+
+	x, err := Gauss(A, f)
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Log("x:", VectToStr(x))
+
+	APlusDA, _ := MatsSum(A, dA)
+	fPlusDf, _ := VecsSum(f, df)
+	xPlusDx, err := Gauss(APlusDA, fPlusDf)
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Log("x + dx:", VectToStr(xPlusDx))
+
+	dx, _ := VecsSub(xPlusDx, x)
+	t.Log("dx:", VectToStr(dx))
+
+	invA, err := A.Inverse()
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Log("inverse A:\n", invA.ToStr())
+
+	normA := A.Norm(EuclideanNorm)
+
+	t.Logf("||dx|| / ||x|| = %0.15f", VecNorm(dx, EuclideanNorm) / VecNorm(x, EuclideanNorm))
+	muA := invA.Norm(EuclideanNorm) * normA
+	t.Logf("μA * (||df|| / ||f|| + ||dA|| / ||A||) = %0.15f", muA * (VecNorm(df, EuclideanNorm) / VecNorm(f, EuclideanNorm) + dA.Norm(EuclideanNorm) / normA))
+}
+
+func TestPerturbations(t *testing.T) {
+	data := randData(10, 10, 1, 100)
+	A, _ := InitMat(data)
+	t.Log("A:\n", A.ToStr())
+
+	dataDA := randData(10, 10, 1, 5)
+	dA, _ := InitMat(dataDA)
+	t.Log("dA:\n", dA.ToStr())
+
+	f := randFree(10, 1, 100)
+	t.Log("f:", VectToStr(f))
+	df := randFree(10, 1, 5)
+	t.Log("df:", VectToStr(df))
+
+	x, err := Gauss(A, f)
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Log("x:", VectToStr(x))
+
+	APlusDA, _ := MatsSum(A, dA)
+	fPlusDf, _ := VecsSum(f, df)
+	xPlusDx, err := Gauss(APlusDA, fPlusDf)
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Log("x + dx:", VectToStr(xPlusDx))
+
+	dx, _ := VecsSub(xPlusDx, x)
+	t.Log("dx:", VectToStr(dx))
+
+	invA, err := A.Inverse()
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Log("inverse A:\n", invA.ToStr())
+
+	normA := A.Norm(EuclideanNorm)
+
+	t.Logf("||dx|| / ||x|| = %0.15f", VecNorm(dx, EuclideanNorm) / VecNorm(x, EuclideanNorm))
+	muA := invA.Norm(EuclideanNorm) * normA
+	t.Logf("μA * (||df|| / ||f|| + ||dA|| / ||A||) = %0.15f", muA * (VecNorm(df, EuclideanNorm) / VecNorm(f, EuclideanNorm) + dA.Norm(EuclideanNorm) / normA))
+}

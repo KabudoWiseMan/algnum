@@ -4,9 +4,13 @@ import (
 	"errors"
 	"fmt"
 	"math"
+	"sync"
 )
 
-const Epsilon = 1e-6
+const (
+	EuclideanNorm = iota
+	Epsilon = 1e-6
+)
 
 type Matrix struct {
 	data [][]float64
@@ -23,6 +27,14 @@ func (mat *Matrix) Cols() int {
 
 func (mat *Matrix) IsSquare() bool {
 	return mat.rows == mat.cols
+}
+
+func init2dSlice(rows, cols int) [][]float64 {
+	data := make([][]float64, rows)
+	for i := range data {
+		data[i] = make([]float64, cols)
+	}
+	return data
 }
 
 func copy2dSlice(src [][]float64) [][]float64 {
@@ -59,10 +71,7 @@ func InitMatOfDim(dim int) (*Matrix, error) {
 		return &Matrix{}, nil
 	}
 
-	data := make([][]float64, dim)
-	for i := range data {
-		data[i] = make([]float64, dim)
-	}
+	data := init2dSlice(dim, dim)
 
 	return &Matrix{data: data, rows: len(data), cols: len(data[0])}, nil
 }
@@ -79,15 +88,12 @@ func InitMatOfDims(rows, cols int) (*Matrix, error) {
 		}
 	}
 
-	data := make([][]float64, rows)
-	for i := range data {
-		data[i] = make([]float64, cols)
-	}
+	data := init2dSlice(rows, cols)
 
 	return &Matrix{data: data, rows: rows, cols: cols}, nil
 }
 
-func (m *Matrix)isDiagDominant() bool {
+func (m *Matrix) IsDiagDominant() bool {
 	if !m.IsSquare() {
 		return false
 	}
@@ -108,6 +114,125 @@ func (m *Matrix)isDiagDominant() bool {
 	return true
 }
 
+func (m *Matrix) Det() (float64, error) {
+	if !m.IsSquare() {
+		return -1, errors.New("matrix isn't square")
+	}
+
+	return detRec(m.data), nil
+}
+
+func del(data [][]float64, row, col int) [][]float64 {
+	res := init2dSlice(len(data) - 1, len(data[0]) - 1)
+	var k, l int
+	for i := range data {
+		if i == row {
+			continue
+		}
+		l = 0
+		for j := range data[i] {
+			if j == col {
+				continue
+			}
+			res[k][l] = data[i][j]
+			l++
+		}
+		k++
+	}
+	return res
+}
+
+func detRec(data [][]float64) float64 {
+	dim := len(data)
+	if dim == 1 {
+		return data[0][0]
+	}
+	if dim == 2 {
+		return data[0][0] * data[1][1] - data[0][1] * data[1][0]
+	}
+
+	res := float64(0)
+	sign := float64(1)
+	for i := 0; i < dim; i++ {
+		res += sign * data[i][0] * detRec(del(data, i, 0))
+		sign *= -1
+	}
+
+	return res
+}
+
+func adjoint(data [][]float64) [][]float64 {
+	if len(data) == 1 {
+		return [][]float64{{data[0][0]}}
+	}
+
+	res := init2dSlice(len(data), len(data[0]))
+	sign := float64(-1)
+
+	var wg sync.WaitGroup
+	for i := range data {
+		for j := range data[i] {
+			wg.Add(1)
+			go func(res [][]float64, i, j int, sign *float64) {
+				defer wg.Done()
+				cofactor := del(data, i, j)
+				if (i + j) % 2 == 0 {
+					*sign = 1
+				} else {
+					*sign = -1
+				}
+
+				res[j][i] = *sign * detRec(cofactor)
+			}(res, i, j, &sign)
+		}
+	}
+
+	wg.Wait()
+	return res
+}
+
+func (m *Matrix) Inverse() (*Matrix, error) {
+	det, err := m.Det()
+	if err != nil {
+		return nil, err
+	}
+	if det == 0 {
+		return nil, errors.New("matrix is singular")
+	}
+
+	invData := init2dSlice(m.rows, m.cols)
+
+	adj := adjoint(m.data)
+	var wg sync.WaitGroup
+	for i := range m.data {
+		for j := range m.data[i] {
+			wg.Add(1)
+			go func(invData [][]float64, i, j int) {
+				defer wg.Done()
+				invData[i][j] = adj[i][j] / det
+			}(invData, i, j)
+		}
+	}
+
+	wg.Wait()
+	inv := &Matrix{invData, m.rows, m.cols}
+	return inv, nil
+}
+
+func (m *Matrix) Norm(normType int) float64 {
+	var norm float64
+
+	switch normType {
+	default:
+		for i := 0; i < m.rows; i++ {
+			for j := 0; j < m.cols; j++ {
+				norm += m.data[i][j] * m.data[i][j]
+			}
+		}
+		return math.Sqrt(norm)
+	}
+}
+
 func VectsEq(a, b []float64, eps float64) bool {
 	if len(a) != len(b) {
 		return false
@@ -120,6 +245,22 @@ func VectsEq(a, b []float64, eps float64) bool {
 	}
 
 	return true
+}
+
+func MatsSum(a, b *Matrix) (*Matrix, error) {
+	if a.rows != b.rows || a.cols != b.cols {
+		return nil, errors.New("matrixs dims don't match")
+	}
+
+	resData := copy2dSlice(a.data)
+	for i := range resData {
+		for j := range resData[i] {
+			resData[i][j] += b.data[i][j]
+		}
+	}
+	res := &Matrix{resData, a.rows, a.cols}
+
+	return res, nil
 }
 
 func MatsEq(a, b *Matrix, eps float64) bool {
@@ -164,6 +305,18 @@ func (mat *Matrix) ToStr() string {
 	res += "]"
 
 	return res
+}
+
+func VecNorm(x []float64, normType int) float64 {
+	var norm float64
+
+	switch normType {
+	default:
+		for _, xi := range x {
+			norm += xi * xi
+		}
+		return math.Sqrt(norm)
+	}
 }
 
 func ScalarProd(a, b []float64) (float64, error) {
@@ -483,7 +636,7 @@ func Gauss(a *Matrix, f []float64) ([]float64, error) {
 		return nil, errors.New("matrix isn't square")
 	}
 
-	if a.isDiagDominant() {
+	if a.IsDiagDominant() {
 		diagMat, newF, err := forwElim(a, f)
 		if err != nil {
 			return nil, err
