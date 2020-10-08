@@ -9,6 +9,7 @@ import (
 
 const (
 	EuclideanNorm = iota
+	InfinityNorm
 	Epsilon = 1e-6
 )
 
@@ -223,6 +224,17 @@ func (m *Matrix) Norm(normType int) float64 {
 	var norm float64
 
 	switch normType {
+	case InfinityNorm:
+		for i := 0; i < m.rows; i++ {
+			var absRowSum float64
+			for j := 0; j < m.cols; j++ {
+				absRowSum += math.Abs(m.data[i][j])
+			}
+			if absRowSum >= norm {
+				norm = absRowSum
+			}
+		}
+		return norm
 	default:
 		for i := 0; i < m.rows; i++ {
 			for j := 0; j < m.cols; j++ {
@@ -311,6 +323,14 @@ func VecNorm(x []float64, normType int) float64 {
 	var norm float64
 
 	switch normType {
+	case InfinityNorm:
+		for _, xi := range x {
+			xiAbs := math.Abs(xi)
+			if xiAbs >= norm {
+				norm = xiAbs
+			}
+		}
+		return norm
 	default:
 		for _, xi := range x {
 			norm += xi * xi

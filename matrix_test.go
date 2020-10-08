@@ -388,7 +388,13 @@ func TestPerturbations(t *testing.T) {
 
 	normA := A.Norm(EuclideanNorm)
 
-	t.Logf("||dx|| / ||x|| = %0.15f", VecNorm(dx, EuclideanNorm) / VecNorm(x, EuclideanNorm))
+	t.Logf("||dx||2 / ||x||2 = %0.15f", VecNorm(dx, EuclideanNorm) / VecNorm(x, EuclideanNorm))
 	muA := invA.Norm(EuclideanNorm) * normA
-	t.Logf("μA * (||df|| / ||f|| + ||dA|| / ||A||) = %0.15f", muA * (VecNorm(df, EuclideanNorm) / VecNorm(f, EuclideanNorm) + dA.Norm(EuclideanNorm) / normA))
+	t.Logf("μA2 * (||df||2 / ||f||2 + ||dA||2 / ||A||2) = %0.15f", muA * (VecNorm(df, EuclideanNorm) / VecNorm(f, EuclideanNorm) + dA.Norm(EuclideanNorm) / normA))
+
+	normAinf := A.Norm(InfinityNorm)
+
+	t.Logf("||dx||∞ / ||x||∞ = %0.15f", VecNorm(dx, InfinityNorm) / VecNorm(x, InfinityNorm))
+	muAinf := invA.Norm(InfinityNorm) * normAinf
+	t.Logf("μA∞ * (||df||∞ / ||f||∞ + ||dA||∞ / ||A||∞) = %0.15f", muAinf * (VecNorm(df, InfinityNorm) / VecNorm(f, InfinityNorm) + dA.Norm(InfinityNorm) / normAinf))
 }
