@@ -93,7 +93,6 @@ func (m *Matrix) IsDiagDominant() bool {
 			}
 		}
 	}
-
 	return true
 }
 

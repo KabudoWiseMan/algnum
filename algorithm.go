@@ -153,9 +153,6 @@ func Gauss(a *Matrix, f []float64) ([]float64, error) {
 	if a.rows == 0 || len(f) == 0 {
 		return nil, errors.New("matrix or free element is empty")
 	}
-	if !a.IsSquare() {
-		return nil, errors.New("matrix isn't square")
-	}
 
 	if a.IsDiagDominant() {
 		diagMat, newF, err := forwElim(a, f)
@@ -167,6 +164,9 @@ func Gauss(a *Matrix, f []float64) ([]float64, error) {
 
 		return res, nil
 	} else {
+		if !a.IsSquare() {
+			return nil, errors.New("matrix isn't square")
+		}
 		diagMat, newF, idxs, err := forwElimLeadEl(a, f)
 		if err != nil {
 			return nil, err
@@ -175,5 +175,76 @@ func Gauss(a *Matrix, f []float64) ([]float64, error) {
 		res := backSubsLeadEl(diagMat, newF, idxs)
 
 		return res, nil
+	}
+}
+
+func Jacobi(a *Matrix, f []float64) ([]float64, error) {
+	n := len(f)
+	if a.rows != n {
+		return nil, errors.New("matrix and free element dims don't match")
+	}
+	if a.rows == 0 || n == 0 {
+		return nil, errors.New("matrix or free element is empty")
+	}
+	if !a.IsDiagDominant() {
+		return nil, errors.New("matrix isn't diagonally dominant")
+	}
+
+	x, xPrev := make([]float64, n), make([]float64, n)
+
+	//iter := 0
+	for {
+		for i := 0; i < n; i++ {
+			var sum float64
+			for j := 0; j < n; j++ {
+				if j != i {
+					sum += a.data[i][j] * xPrev[j]
+				}
+			}
+			x[i] = (f[i] - sum) / a.data[i][i]
+		}
+		sub, _ := VecsSub(x, xPrev)
+		if VecNorm(sub, InfinityNorm) <= Epsilon {
+			//fmt.Println("iterations:", iter)
+			return x, nil
+		}
+		copy(xPrev, x)
+		//iter++
+	}
+}
+
+func Seidel(a *Matrix, f []float64) ([]float64, error) {
+	n := len(f)
+	if a.rows != n {
+		return nil, errors.New("matrix and free element dims don't match")
+	}
+	if a.rows == 0 || n == 0 {
+		return nil, errors.New("matrix or free element is empty")
+	}
+	if !a.IsDiagDominant() {
+		return nil, errors.New("matrix isn't diagonally dominant")
+	}
+
+	x, xPrev := make([]float64, n), make([]float64, n)
+
+	//iter := 0
+	for {
+		for i := 0; i < n; i++ {
+			var sum float64
+			for j := 0; j < i; j++ {
+				sum += a.data[i][j] * x[j]
+			}
+			for j := i + 1; j < n; j++ {
+				sum += a.data[i][j] * xPrev[j]
+			}
+			x[i] = (f[i] - sum) / a.data[i][i]
+		}
+		sub, _ := VecsSub(x, xPrev)
+		if VecNorm(sub, InfinityNorm) <= Epsilon {
+			//fmt.Println("iterations:", iter)
+			return x, nil
+		}
+		copy(xPrev, x)
+		//iter++
 	}
 }

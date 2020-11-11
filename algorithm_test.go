@@ -1,6 +1,7 @@
 package algnum
 
 import (
+	"math"
 	"math/rand"
 	"testing"
 	"time"
@@ -29,6 +30,37 @@ func randFree(dim int, min, max int) []float64 {
 	res := make([]float64, dim)
 	for i := range res {
 		res[i] = float64(rand.Intn(max - min) + min)
+	}
+
+	return res
+}
+
+// each diagonal element will be >= sum of other elements in the row
+func randDiagDominantData(rows, cols int, min, max int) [][]float64 {
+	rand.Seed(time.Now().UnixNano())
+
+	res := make([][]float64, rows)
+	for i := range res {
+		res[i] = make([]float64, cols)
+	}
+
+	for i := range res {
+		for j := range res {
+			res[i][j] = float64(rand.Intn(max - min) + min)
+		}
+	}
+
+	for i := 0; i < rows; i++ {
+		var sum float64
+		for j := 0; j < cols; j++ {
+			if j == i {
+				continue
+			}
+			sum += math.Abs(res[i][j])
+		}
+		if math.Abs(res[i][i]) < sum {
+			res[i][i] += sum
+		}
 	}
 
 	return res
@@ -243,4 +275,80 @@ func TestPerturbations(t *testing.T) {
 	muAinf := invA.Norm(InfinityNorm) * normAinf
 	t.Logf("μA∞ = %0.15f", muAinf)
 	t.Logf("μA∞ * (||df||∞ / ||f||∞ + ||dA||∞ / ||A||∞) = %0.15f", muAinf * (VecNorm(df, InfinityNorm) / VecNorm(f, InfinityNorm) + dA.Norm(InfinityNorm) / normAinf))
+}
+
+func TestJacobi(t *testing.T) {
+	data := [][]float64{
+		{3, 2, 1},
+		{1, 3, 2},
+		{1, 2, 4},
+	}
+	mat, _ := InitMat(data)
+	f := []float64{1, 4, 2}
+
+	expectedRes := []float64{-float64(14) / float64(19), float64(32) / float64(19), -float64(3) / float64(19)}
+
+	res, err := Jacobi(mat, f)
+	if err != nil {
+		t.Fatal(err)
+	} else if !VectsEq(expectedRes, res, Epsilon) {
+		t.Fatalf("result is wrong: expected\n %s,\ngot\n %s", VectToStr(expectedRes), VectToStr(res))
+	} else {
+		t.Log("gauss works correct, input:\nA = ", mat.ToStr(), "\nf = ", VectToStr(f), "\nresult:", VectToStr(res))
+	}
+
+	dataN := randDiagDominantData(100, 100, 1, 100)
+	matN, _ := InitMat(dataN)
+	fN := randFree(100, 1, 1000)
+
+	resN, err := Jacobi(matN, fN)
+	if err != nil {
+		t.Fatal(err)
+	}
+	check, err := MatVecMul(matN, resN)
+	if err != nil {
+		t.Fatal(err)
+	} else if !VectsEq(fN, check, 1e-2) {
+		t.Fatalf("result is wrong, input:\nA = %s\nf = %s\nres = %s\ncheck:%s", matN.ToStr(), VectToStr(fN), VectToStr(resN), VectToStr(check))
+	} else {
+		t.Log("gauss works correct, input:\nA = ", matN.ToStr(), "\nf = ", VectToStr(fN), "\nresult:", VectToStr(resN), "\ncheck:", VectToStr(check))
+	}
+}
+
+func TestSeidel(t *testing.T) {
+	data := [][]float64{
+		{3, 2, 1},
+		{1, 3, 2},
+		{1, 2, 4},
+	}
+	mat, _ := InitMat(data)
+	f := []float64{1, 4, 2}
+
+	expectedRes := []float64{-float64(14) / float64(19), float64(32) / float64(19), -float64(3) / float64(19)}
+
+	res, err := Seidel(mat, f)
+	if err != nil {
+		t.Fatal(err)
+	} else if !VectsEq(expectedRes, res, Epsilon) {
+		t.Fatalf("result is wrong: expected\n %s,\ngot\n %s", VectToStr(expectedRes), VectToStr(res))
+	} else {
+		t.Log("gauss works correct, input:\nA = ", mat.ToStr(), "\nf = ", VectToStr(f), "\nresult:", VectToStr(res))
+	}
+
+	dataN := randDiagDominantData(100, 100, 1, 100)
+	matN, _ := InitMat(dataN)
+	fN := randFree(100, 1, 1000)
+
+	resN, err := Seidel(matN, fN)
+	if err != nil {
+		t.Fatal(err)
+	}
+	check, err := MatVecMul(matN, resN)
+	if err != nil {
+		t.Fatal(err)
+	} else if !VectsEq(fN, check, 1e-3) {
+		t.Fatalf("result is wrong, input:\nA = %s\nf = %s\nres = %s\ncheck:%s", matN.ToStr(), VectToStr(fN), VectToStr(resN), VectToStr(check))
+	} else {
+		t.Log("gauss works correct, input:\nA = ", matN.ToStr(), "\nf = ", VectToStr(fN), "\nresult:", VectToStr(resN), "\ncheck:", VectToStr(check))
+	}
 }
