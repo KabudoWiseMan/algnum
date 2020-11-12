@@ -194,6 +194,7 @@ func Jacobi(a *Matrix, f []float64) ([]float64, error) {
 
 	//iter := 0
 	for {
+		//iter++
 		for i := 0; i < n; i++ {
 			var sum float64
 			for j := 0; j < n; j++ {
@@ -209,7 +210,6 @@ func Jacobi(a *Matrix, f []float64) ([]float64, error) {
 			return x, nil
 		}
 		copy(xPrev, x)
-		//iter++
 	}
 }
 
@@ -229,13 +229,13 @@ func Seidel(a *Matrix, f []float64) ([]float64, error) {
 
 	//iter := 0
 	for {
+		//iter++
 		for i := 0; i < n; i++ {
 			var sum float64
-			for j := 0; j < i; j++ {
-				sum += a.data[i][j] * x[j]
-			}
-			for j := i + 1; j < n; j++ {
-				sum += a.data[i][j] * xPrev[j]
+			for j := 0; j < n; j++ {
+				if j != i {
+					sum += a.data[i][j] * x[j]
+				}
 			}
 			x[i] = (f[i] - sum) / a.data[i][i]
 		}
@@ -245,6 +245,5 @@ func Seidel(a *Matrix, f []float64) ([]float64, error) {
 			return x, nil
 		}
 		copy(xPrev, x)
-		//iter++
 	}
 }

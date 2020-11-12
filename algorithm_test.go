@@ -294,7 +294,26 @@ func TestJacobi(t *testing.T) {
 	} else if !VectsEq(expectedRes, res, Epsilon) {
 		t.Fatalf("result is wrong: expected\n %s,\ngot\n %s", VectToStr(expectedRes), VectToStr(res))
 	} else {
-		t.Log("gauss works correct, input:\nA = ", mat.ToStr(), "\nf = ", VectToStr(f), "\nresult:", VectToStr(res))
+		t.Log("jacobi works correct, input:\nA = ", mat.ToStr(), "\nf = ", VectToStr(f), "\nresult:", VectToStr(res))
+	}
+
+	data2 := [][]float64{
+		{100, 30, -70},
+		{15, -50, -5},
+		{6, 2, 20},
+	}
+	mat2, _ := InitMat(data2)
+	f2 := []float64{60, -40, 28}
+
+	expectedRes2 := []float64{1, 1, 1}
+
+	res2, err := Jacobi(mat2, f2)
+	if err != nil {
+		t.Fatal(err)
+	} else if !VectsEq(expectedRes2, res2, Epsilon) {
+		t.Fatalf("result is wrong: expected\n %s,\ngot\n %s", VectToStr(expectedRes2), VectToStr(res2))
+	} else {
+		t.Log("jacobi works correct, input:\nA = ", mat2.ToStr(), "\nf = ", VectToStr(f2), "\nresult:", VectToStr(res2))
 	}
 
 	dataN := randDiagDominantData(100, 100, 1, 100)
@@ -311,7 +330,7 @@ func TestJacobi(t *testing.T) {
 	} else if !VectsEq(fN, check, 1e-2) {
 		t.Fatalf("result is wrong, input:\nA = %s\nf = %s\nres = %s\ncheck:%s", matN.ToStr(), VectToStr(fN), VectToStr(resN), VectToStr(check))
 	} else {
-		t.Log("gauss works correct, input:\nA = ", matN.ToStr(), "\nf = ", VectToStr(fN), "\nresult:", VectToStr(resN), "\ncheck:", VectToStr(check))
+		t.Log("jacobi works correct, input:\nA = ", matN.ToStr(), "\nf = ", VectToStr(fN), "\nresult:", VectToStr(resN), "\ncheck:", VectToStr(check))
 	}
 }
 
@@ -332,7 +351,26 @@ func TestSeidel(t *testing.T) {
 	} else if !VectsEq(expectedRes, res, Epsilon) {
 		t.Fatalf("result is wrong: expected\n %s,\ngot\n %s", VectToStr(expectedRes), VectToStr(res))
 	} else {
-		t.Log("gauss works correct, input:\nA = ", mat.ToStr(), "\nf = ", VectToStr(f), "\nresult:", VectToStr(res))
+		t.Log("siedel works correct, input:\nA = ", mat.ToStr(), "\nf = ", VectToStr(f), "\nresult:", VectToStr(res))
+	}
+
+	data2 := [][]float64{
+		{100, 30, -70},
+		{15, -50, -5},
+		{6, 2, 20},
+	}
+	mat2, _ := InitMat(data2)
+	f2 := []float64{60, -40, 28}
+
+	expectedRes2 := []float64{1, 1, 1}
+
+	res2, err := Seidel(mat2, f2)
+	if err != nil {
+		t.Fatal(err)
+	} else if !VectsEq(expectedRes2, res2, Epsilon) {
+		t.Fatalf("result is wrong: expected\n %s,\ngot\n %s", VectToStr(expectedRes2), VectToStr(res2))
+	} else {
+		t.Log("seidel works correct, input:\nA = ", mat2.ToStr(), "\nf = ", VectToStr(f2), "\nresult:", VectToStr(res2))
 	}
 
 	dataN := randDiagDominantData(100, 100, 1, 100)
@@ -349,6 +387,6 @@ func TestSeidel(t *testing.T) {
 	} else if !VectsEq(fN, check, 1e-3) {
 		t.Fatalf("result is wrong, input:\nA = %s\nf = %s\nres = %s\ncheck:%s", matN.ToStr(), VectToStr(fN), VectToStr(resN), VectToStr(check))
 	} else {
-		t.Log("gauss works correct, input:\nA = ", matN.ToStr(), "\nf = ", VectToStr(fN), "\nresult:", VectToStr(resN), "\ncheck:", VectToStr(check))
+		t.Log("seidel works correct, input:\nA = ", matN.ToStr(), "\nf = ", VectToStr(fN), "\nresult:", VectToStr(resN), "\ncheck:", VectToStr(check))
 	}
 }
