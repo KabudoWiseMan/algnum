@@ -17,3 +17,30 @@ func copy2dSlice(src [][]float64) [][]float64 {
 
 	return dst
 }
+
+func isPowerOfTwo(x int) bool {
+	return (x != 0) && ((x & (x - 1)) == 0)
+}
+
+func intMax(a, b int) int {
+	if a > b {
+		return a
+	}
+	return b
+}
+
+func intMax4(a, b, c, d int) int {
+	return intMax(intMax(intMax(a, b), c), d)
+}
+
+func nearestPowerOfTwo(a int) int {
+	if isPowerOfTwo(a) {
+		return a
+	}
+	count := 0
+	for a != 0 {
+		a = a >> 1
+		count++
+	}
+	return 1 << count
+}

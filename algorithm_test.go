@@ -390,3 +390,27 @@ func TestSeidel(t *testing.T) {
 		t.Log("seidel works correct, input:\nA = ", matN.ToStr(), "\nf = ", VectToStr(fN), "\nresult:", VectToStr(resN), "\ncheck:", VectToStr(check))
 	}
 }
+
+func TestStrassen(t *testing.T) {
+	aData := randData(1024, 1024, 1, 10)
+	a, _ := InitMat(aData)
+
+	bData := randData(1024, 1024, 1, 10)
+	b, _ := InitMat(bData)
+
+	startStrass := time.Now()
+	res, err := Strassen(a, b, true)
+	stopStrass := time.Since(startStrass)
+	start := time.Now()
+	expectedRes, _ := MatMul(a, b)
+	stop := time.Since(start)
+
+	if err != nil {
+		t.Fatal(err)
+	} else if !MatsEq(res, expectedRes, Epsilon) {
+		t.Fatalf("result is wrong: expected\n %s,\ngot\n %s", expectedRes.ToStr(), res.ToStr())
+	} else {
+		t.Logf("strassen works correct, time: %s vs. %s\n", stop, stopStrass)
+		//t.Log(res.ToStr())
+	}
+}

@@ -240,6 +240,14 @@ func VectsEq(a, b []float64, eps float64) bool {
 	return true
 }
 
+func MatsSlice(m *Matrix, i, n, j, k int) (*Matrix, error) {
+	if i < 0 || j < 0 || n > m.rows || k > m.cols {
+		return nil, errors.New("indexes are out of bounds")
+	}
+
+	return &Matrix{copy2dSlice(m.data[i : n][j : k]), n - i, k - j}, nil
+}
+
 func MatsSum(a, b *Matrix) (*Matrix, error) {
 	if a.rows != b.rows || a.cols != b.cols {
 		return nil, errors.New("matrixs dims don't match")
@@ -254,6 +262,42 @@ func MatsSum(a, b *Matrix) (*Matrix, error) {
 	res := &Matrix{resData, a.rows, a.cols}
 
 	return res, nil
+}
+
+func MatsSub(a, b *Matrix) (*Matrix, error) {
+	if a.rows != b.rows || a.cols != b.cols {
+		return nil, errors.New("matrixs dims don't match")
+	}
+
+	resData := copy2dSlice(a.data)
+	for i := range resData {
+		for j := range resData[i] {
+			resData[i][j] -= b.data[i][j]
+		}
+	}
+	res := &Matrix{resData, a.rows, a.cols}
+
+	return res, nil
+}
+
+func slicesSum(a, b [][]float64) [][]float64 {
+	res := copy2dSlice(a)
+	for i := range res {
+		for j := range res[i] {
+			res[i][j] += b[i][j]
+		}
+	}
+	return res
+}
+
+func slicesSub(a, b [][]float64) [][]float64 {
+	res := copy2dSlice(a)
+	for i := range res {
+		for j := range res[i] {
+			res[i][j] -= b[i][j]
+		}
+	}
+	return res
 }
 
 func MatsEq(a, b *Matrix, eps float64) bool {
