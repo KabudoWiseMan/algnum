@@ -66,6 +66,38 @@ func randDiagDominantData(rows, cols int, min, max int) [][]float64 {
 	return res
 }
 
+func randDiagSym(rows, cols int, min, max int) [][]float64 {
+	rand.Seed(time.Now().UnixNano())
+
+	res := make([][]float64, rows)
+	for i := range res {
+		res[i] = make([]float64, cols)
+	}
+
+	for i := range res {
+		for j := 0; j <= i; j++ {
+			r := float64(rand.Intn(max - min) + min)
+			res[i][j] = r
+			res[j][i] = r
+		}
+	}
+
+	for i := 0; i < rows; i++ {
+		var sum float64
+		for j := 0; j < cols; j++ {
+			if j == i {
+				continue
+			}
+			sum += math.Abs(res[i][j])
+		}
+		if math.Abs(res[i][i]) < sum {
+			res[i][i] += sum
+		}
+	}
+
+	return res
+}
+
 func TestGauss(t *testing.T) {
 	data := [][]float64{
 		{3, 2, 1},
@@ -316,9 +348,9 @@ func TestJacobi(t *testing.T) {
 		t.Log("jacobi works correct, input:\nA = ", mat2.ToStr(), "\nf = ", VectToStr(f2), "\nresult:", VectToStr(res2))
 	}
 
-	dataN := randDiagDominantData(100, 100, 1, 100)
+	dataN := randDiagDominantData(1000, 1000, 1, 100)
 	matN, _ := InitMat(dataN)
-	fN := randFree(100, 1, 1000)
+	fN := randFree(1000, 1, 1000)
 
 	resN, err := Jacobi(matN, fN)
 	if err != nil {
@@ -373,9 +405,9 @@ func TestSeidel(t *testing.T) {
 		t.Log("seidel works correct, input:\nA = ", mat2.ToStr(), "\nf = ", VectToStr(f2), "\nresult:", VectToStr(res2))
 	}
 
-	dataN := randDiagDominantData(100, 100, 1, 100)
+	dataN := randDiagDominantData(1000, 1000, 1, 100)
 	matN, _ := InitMat(dataN)
-	fN := randFree(100, 1, 1000)
+	fN := randFree(1000, 1, 1000)
 
 	resN, err := Seidel(matN, fN)
 	if err != nil {
@@ -392,10 +424,10 @@ func TestSeidel(t *testing.T) {
 }
 
 func TestStrassen(t *testing.T) {
-	aData := randData(1024, 1024, 1, 10)
+	aData := randData(3000, 3000, 1, 10)
 	a, _ := InitMat(aData)
 
-	bData := randData(1024, 1024, 1, 10)
+	bData := randData(3000, 3000, 1, 10)
 	b, _ := InitMat(bData)
 
 	startStrass := time.Now()
@@ -412,5 +444,36 @@ func TestStrassen(t *testing.T) {
 	} else {
 		t.Logf("strassen works correct, time: %s vs. %s\n", stop, stopStrass)
 		//t.Log(res.ToStr())
+	}
+}
+
+func TestCholesky(t *testing.T) {
+	data := randDiagSym(10, 10, 1, 10)
+	mat, _ := InitMat(data)
+	f := randFree(10, 1, 100)
+
+	l, err := Cholesky(mat)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	y, err := GaussClassic(l, f)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	lt := TransposeMat(l)
+
+	res, err := GaussClassic(lt, y)
+	if err != nil {
+		t.Fatal(err)
+	}
+	check, err := MatVecMul(mat, res)
+	if err != nil {
+		t.Fatal(err)
+	} else if !VectsEq(f, check, 10) {
+		t.Fatalf("result is wrong, input:\nA = %s\nf = %s\nres = %s\ncheck:%s", mat.ToStr(), VectToStr(f), VectToStr(res), VectToStr(check))
+	} else {
+		t.Log("seidel works correct, input:\nA = ", mat.ToStr(), "\nf = ", VectToStr(f), "\nresult:", VectToStr(res), "\ncheck:", VectToStr(check))
 	}
 }

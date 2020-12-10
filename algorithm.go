@@ -179,6 +179,57 @@ func Gauss(a *Matrix, f []float64) ([]float64, error) {
 	}
 }
 
+func GaussClassic(a *Matrix, f []float64) ([]float64, error) {
+	if a.rows != len(f) {
+		return nil, errors.New("matrix and free element dims don't match")
+	}
+	if a.rows == 0 || len(f) == 0 {
+		return nil, errors.New("matrix or free element is empty")
+	}
+	if !a.IsSquare() {
+		return nil, errors.New("matrix isn't square")
+	}
+
+	diagMat, newF, err := forwElim(a, f)
+	if err != nil {
+		return nil, err
+	}
+
+	res := backSubs(diagMat, newF)
+
+	return res, nil
+}
+
+func GaussWithLeadEl(a *Matrix, f []float64) ([]float64, error) {
+	if a.rows != len(f) {
+		return nil, errors.New("matrix and free element dims don't match")
+	}
+	if a.rows == 0 || len(f) == 0 {
+		return nil, errors.New("matrix or free element is empty")
+	}
+	if !a.IsSquare() {
+		return nil, errors.New("matrix isn't square")
+	}
+	
+	diagMat, newF, idxs, err := forwElimLeadEl(a, f)
+	if err != nil {
+		return nil, err
+	}
+
+	res := backSubsLeadEl(diagMat, newF, idxs)
+
+	return res, nil
+}
+
+func normVec(v []float64) float64 {
+	max := float64(0)
+	for _, val := range v {
+		max = math.Max(max, math.Abs(val))
+	}
+
+	return max
+}
+
 func Jacobi(a *Matrix, f []float64) ([]float64, error) {
 	n := len(f)
 	if a.rows != n {
@@ -406,4 +457,30 @@ func strassRecPar(a, b [][]float64, nMin int, wg *sync.WaitGroup) [][]float64 {
 	c := buildSlice(c11, c12, c21, c22)
 
 	return c
+}
+
+func Cholesky(a *Matrix) (*Matrix, error) {
+	if !a.IsDiagDominant() {
+		return nil, errors.New("matrix isn't diagonally dominant")
+	}
+
+	n := a.rows
+	resData := init2dSlice(n, n)
+
+	for i := 0; i < n; i++ {
+		s := a.data[i][i]
+		for ip := 0; ip < i - 1; ip++ {
+			s = s - resData[i][ip] * resData[i][ip]
+		}
+		resData[i][i] = math.Sqrt(s)
+		for j := i + 1; j < n; j++ {
+			s = a.data[j][i]
+			for ip := 0; ip < i - 1; ip++ {
+				s = s - resData[i][ip] * resData[j][ip]
+			}
+			resData[j][i] = s / resData[i][i]
+		}
+	}
+
+	return &Matrix{resData, n, n}, nil
 }
