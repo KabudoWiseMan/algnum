@@ -448,9 +448,9 @@ func TestStrassen(t *testing.T) {
 }
 
 func TestCholesky(t *testing.T) {
-	data := randDiagSym(10, 10, 1, 10)
+	data := randDiagSym(100, 100, 1, 100)
 	mat, _ := InitMat(data)
-	f := randFree(10, 1, 100)
+	f := randFree(100, 1, 100)
 
 	l, err := Cholesky(mat)
 	if err != nil {
@@ -471,7 +471,7 @@ func TestCholesky(t *testing.T) {
 	check, err := MatVecMul(mat, res)
 	if err != nil {
 		t.Fatal(err)
-	} else if !VectsEq(f, check, 10) {
+	} else if !VectsEq(f, check, 1e-2) {
 		t.Fatalf("result is wrong, input:\nA = %s\nf = %s\nres = %s\ncheck:%s", mat.ToStr(), VectToStr(f), VectToStr(res), VectToStr(check))
 	} else {
 		t.Log("seidel works correct, input:\nA = ", mat.ToStr(), "\nf = ", VectToStr(f), "\nresult:", VectToStr(res), "\ncheck:", VectToStr(check))
