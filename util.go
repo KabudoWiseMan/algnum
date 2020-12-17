@@ -44,3 +44,18 @@ func nearestPowerOfTwo(a int) int {
 	}
 	return 1 << count
 }
+
+func findMinMax(a []float64) (float64, float64) {
+	min, max := a[0], a[0]
+
+	for _, ai := range a {
+		if ai < min {
+			min = ai
+		}
+		if ai > max {
+			max = ai
+		}
+	}
+
+	return min, max
+}

@@ -1,8 +1,41 @@
 package algnum
 
 import (
+	"gonum.org/v1/gonum/mat"
 	"testing"
 )
+
+func lapackDet(m [][]float64, n int) float64 {
+	var mVec []float64
+	for i := 0; i < n; i++ {
+		mVec = append(mVec, m[i]...)
+	}
+	gonumA := mat.NewDense(n, n, mVec)
+
+	return mat.Det(gonumA)
+}
+
+func lapackInverse(m [][]float64, n int) ([][]float64, error) {
+	var mVec []float64
+	for i := 0; i < n; i++ {
+		mVec = append(mVec, m[i]...)
+	}
+	gonumA := mat.NewDense(n, n, mVec)
+
+	var inv mat.Dense
+	if err := inv.Inverse(gonumA); err != nil {
+		return nil, err
+	}
+
+	res :=  init2dSlice(n, n)
+	for i := 0; i < n; i++ {
+		for j := 0; j < n; j++ {
+			res[i][j] = inv.At(i, j)
+		}
+	}
+
+	return res, nil
+}
 
 func TestScalarProd(t *testing.T) {
 	a := []float64{1, 2, 3}
@@ -159,4 +192,98 @@ func TestMatrix_Inverse(t *testing.T) {
 	} else {
 		t.Log("inverse matrix works correct")
 	}
+}
+
+func TestLU(t *testing.T) {
+	data := [][]float64{
+		{7, 3, -1, 2},
+		{3, 8, 1, -4},
+		{-1, 1, 4, -1},
+		{2, -4, -1, 6},
+	}
+	mat, _ := InitMat(data)
+
+	l, u, err := LU(mat)
+	if err != nil {
+		t.Fatal(err)
+	} else {
+		a, _ := Strassen(l, u, true)
+		sub, _ := MatsSub(mat, a)
+		t.Logf("LU norm: %0.15f", sub.Norm(EuclideanNorm))
+	}
+
+	dataN := randData(100, 100, 1, 10)
+	matN, _ := InitMat(dataN)
+
+	lN, uN, err := LU(matN)
+	if err != nil {
+		t.Fatal(err)
+	} else {
+		a, _ := Strassen(lN, uN, true)
+		sub, _ := MatsSub(matN, a)
+		t.Logf("LU norm: %0.15f", sub.Norm(EuclideanNorm))
+	}
+
+	dataSym := randSymData(3, 3, 1, 10)
+	matSym, _ := InitMat(dataSym)
+
+	lSym, uSym, err := LU(matSym)
+	if err != nil {
+		t.Fatal(err)
+	} else {
+		t.Log("\n" + matSym.ToStr())
+		t.Log("\n" + lSym.ToStr())
+		t.Log("\n" +uSym.ToStr())
+	}
+}
+
+func TestMatrix_DetLU(t *testing.T) {
+	dataN := randData(10, 10, 1, 10)
+	matN, _ := InitMat(dataN)
+
+	d, err := matN.DetLU()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	lapack := lapackDet(dataN, len(dataN))
+	dReg, err := matN.Det()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	t.Logf("LU Det: %0.15f; MyDet: %0.15f; LAPACK_DET: %0.15f", d, dReg, lapack)
+}
+
+func TestMatrix_InverseLU(t *testing.T) {
+	dataN := randData(10, 10, 1, 10)
+	matN, _ := InitMat(dataN)
+
+	res, err := matN.InverseLU()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	myInv, err := matN.Inverse()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	lapack, err := lapackInverse(dataN, len(dataN))
+	if err != nil {
+		t.Fatal(err)
+	}
+	lapackMat, _ := InitMat(lapack)
+
+	subLAPACK, err := MatsSub(res, lapackMat)
+	if err != nil {
+		t.Fatal(err)
+	}
+	subMy, err := MatsSub(res, myInv)
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Logf("LU inv vs. LAPACK norm: %0.15f; LU inv vs. my inv: %0.15f",
+		subLAPACK.Norm(EuclideanNorm), subMy.Norm(EuclideanNorm),
+	)
 }

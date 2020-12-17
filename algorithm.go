@@ -2,6 +2,7 @@ package algnum
 
 import (
 	"errors"
+	"gonum.org/v1/gonum/mat"
 	"math"
 	"sync"
 )
@@ -460,8 +461,8 @@ func strassRecPar(a, b [][]float64, nMin int, wg *sync.WaitGroup) [][]float64 {
 }
 
 func Cholesky(a *Matrix) (*Matrix, error) {
-	if !a.IsDiagDominant() {
-		return nil, errors.New("matrix isn't diagonally dominant")
+	if !a.IsDiagDominant() || !a.IsSymmetric() {
+		return nil, errors.New("matrix isn't symmetric and diagonally dominant")
 	}
 
 	n := a.rows
@@ -483,4 +484,174 @@ func Cholesky(a *Matrix) (*Matrix, error) {
 	}
 
 	return &Matrix{resData, n, n}, nil
+}
+
+func MinMaxEigenvalues(m *Matrix) (float64, float64, error) {
+	n := m.rows
+	var mVec []float64
+	for i := 0; i < n; i++ {
+		mVec = append(mVec, m.data[i]...)
+	}
+
+	gonumM := mat.NewSymDense(n, mVec)
+
+	var eig mat.EigenSym
+	ok := eig.Factorize(gonumM, false)
+	if !ok {
+		return -1, -1, errors.New("symmetric eigendecomposition failed")
+	}
+	vals := eig.Values(nil)
+
+	min, max := findMinMax(vals)
+
+	return min, max, nil
+}
+
+func MyMinMaxEigenvalues(a *Matrix) (float64, float64, error) {
+	n := a.rows
+
+	x := make([]float64, n)
+	xPrev := make([]float64, n)
+	for i, _ := range xPrev {
+		xPrev[i] = 1
+	}
+	xPrev = VecConstMul(xPrev, VecNorm(xPrev, EuclideanNorm))
+
+	var lMax float64
+	//iter := 0
+	for {
+		//iter++
+		y, _ := MatVecMul(a, xPrev)
+		x = VecConstMul(y, 1 / VecNorm(y, EuclideanNorm))
+		c, _ := MatVecMul(a, x)
+		lMax, _ = ScalarProd(c, x)
+
+		sub, _ := VecsSub(x, xPrev)
+		if VecNorm(sub, EuclideanNorm) <= 1e-1 {
+			break
+		}
+		copy(xPrev, x)
+	}
+
+	e, _ := IdentityMat(n)
+	lE := MatConstMul(e, lMax)
+	b, _ := MatsSub(a, lE)
+	x = make([]float64, n)
+	for i, _ := range xPrev {
+		xPrev[i] = 1
+	}
+	xPrev = VecConstMul(xPrev, VecNorm(xPrev, EuclideanNorm))
+
+	var lMin float64
+	for {
+		//iter++
+		y, _ := MatVecMul(b, xPrev)
+		x = VecConstMul(y, 1 / VecNorm(y, EuclideanNorm))
+		c, _ := MatVecMul(b, x)
+		lMin, _ = ScalarProd(c, x)
+
+		sub, _ := VecsSum(x, xPrev)
+		if VecNorm(sub, EuclideanNorm) <= 1e-1 {
+			//fmt.Println(iter)
+			break
+		}
+		copy(xPrev, x)
+	}
+
+	return lMax + lMin, lMax, nil
+}
+
+func FixedPointIteration(a *Matrix, f []float64) ([]float64, error) {
+	if !a.IsSymmetric() || !a.IsDiagDominant() {
+		return nil, errors.New("matrix isn't symmetric and diagonally dominant")
+	}
+	n := a.rows
+
+	minEigenVal, maxEigenVal, err := MyMinMaxEigenvalues(a)
+	if err != nil {
+		return nil, err
+	}
+
+	t := 2 / (minEigenVal + maxEigenVal)
+
+	x, xPrev := make([]float64, n), make([]float64, n)
+
+	e, _ := IdentityMat(n)
+	tA := MatConstMul(a, t)
+	p, _ := MatsSub(e, tA)
+	g := VecConstMul(f, t)
+
+	//iter := 0
+	for {
+		//iter++
+		pxPrev, _ := MatVecMul(p, xPrev)
+		x, _ = VecsSum(pxPrev, g)
+		sub, _ := VecsSub(x, xPrev)
+		if VecNorm(sub, InfinityNorm) <= Epsilon {
+			//fmt.Println("iterations:", iter)
+			return x, nil
+		}
+		copy(xPrev, x)
+	}
+}
+
+func FixedPointIterationWithT(a *Matrix, f []float64, t float64) ([]float64, int, error) {
+	if !a.IsSymmetric() || !a.IsDiagDominant() {
+		return nil, -1, errors.New("matrix isn't symmetric and diagonally dominant")
+	}
+	n := a.rows
+
+	x, xPrev := make([]float64, n), make([]float64, n)
+
+	e, _ := IdentityMat(n)
+	tA := MatConstMul(a, t)
+	p, _ := MatsSub(e, tA)
+	g := VecConstMul(f, t)
+
+	iter := 0
+	for {
+		iter++
+		pxPrev, _ := MatVecMul(p, xPrev)
+		x, _ = VecsSum(pxPrev, g)
+		sub, _ := VecsSub(x, xPrev)
+		if VecNorm(sub, InfinityNorm) <= Epsilon {
+			return x, iter, nil
+		}
+		copy(xPrev, x)
+	}
+}
+
+func LUSolve(l, u *Matrix, f []float64) ([]float64, error) {
+	// ***Using Gauss***
+	//y, err := GaussClassic(l, f)
+	//if err != nil {
+	//	return nil, err
+	//}
+	//
+	//res, err := GaussClassic(u, y)
+	//if err != nil {
+	//	return nil, err
+	//}
+	//
+	//return res, nil
+
+	// ***Iterative***
+	n := l.rows
+	x, y := make([]float64, n), make([]float64, n)
+	for i := 0; i < n; i++ {
+		var sum float64
+		for k := 0; k <= i - 1; k++ {
+			sum += l.data[i][k] * y[k]
+		}
+		y[i] = f[i] - sum
+	}
+	for i := n - 1; i >= 0; i-- {
+		var sum float64
+		for k := i + 1; k < n; k++ {
+			sum += u.data[i][k] * x[k]
+		}
+		x[i] = (y[i] - sum) / u.data[i][i]
+	}
+
+	return x, nil
 }

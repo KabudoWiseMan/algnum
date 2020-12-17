@@ -76,6 +76,22 @@ func InitMatOfDims(rows, cols int) (*Matrix, error) {
 	return &Matrix{data: data, rows: rows, cols: cols}, nil
 }
 
+func IdentityMat(dim int) (*Matrix, error) {
+	if dim < 0 {
+		return nil, errors.New("wrong dimention")
+	}
+	if dim == 0 {
+		return &Matrix{}, nil
+	}
+
+	data := init2dSlice(dim, dim)
+	for i := 0; i < dim; i++ {
+		data[i][i] = 1
+	}
+
+	return &Matrix{data: data, rows: len(data), cols: len(data[0])}, nil
+}
+
 func (m *Matrix) IsDiagDominant() bool {
 	if !m.IsSquare() {
 		return false
@@ -89,6 +105,20 @@ func (m *Matrix) IsDiagDominant() bool {
 			}
 			sum += math.Abs(m.data[i][j])
 			if aii < sum {
+				return false
+			}
+		}
+	}
+	return true
+}
+
+func (m *Matrix) IsSymmetric() bool {
+	if !m.IsSquare() {
+		return false
+	}
+	for i := 0; i < m.rows; i++ {
+		for j := 0; j <= i; j++ {
+			if m.data[i][j] != m.data[j][i] {
 				return false
 			}
 		}
@@ -178,7 +208,7 @@ func (m *Matrix) Inverse() (*Matrix, error) {
 	if err != nil {
 		return nil, err
 	}
-	if det == 0 {
+	if math.Abs(det) <= Epsilon {
 		return nil, errors.New("matrix is singular")
 	}
 
@@ -254,6 +284,7 @@ func MatsSum(a, b *Matrix) (*Matrix, error) {
 	}
 
 	resData := copy2dSlice(a.data)
+	fmt.Println(resData)
 	for i := range resData {
 		for j := range resData[i] {
 			resData[i][j] += b.data[i][j]
@@ -455,6 +486,15 @@ func SwitchVecEls(a []float64, i, j int) ([]float64, error) {
 	return res, nil
 }
 
+func MatConstMul(a *Matrix, c float64) *Matrix {
+	resData := make([][]float64, a.rows)
+	for i, ai := range a.data {
+		resData[i] = VecConstMul(ai, c)
+	}
+
+	return &Matrix{data: resData, rows: a.rows, cols: a.cols}
+}
+
 func MatVecMul(a *Matrix, x []float64) ([]float64, error) {
 	if a.rows == 0 {
 		return nil, errors.New("matrix is empty")
@@ -527,4 +567,118 @@ func SwitchCols(mat *Matrix, i, j int) (*Matrix, error) {
 	}
 
 	return &Matrix{data: resData, rows: mat.rows, cols: mat.cols}, nil
+}
+
+func LU(m *Matrix) (*Matrix, *Matrix, error) {
+	if !m.IsSquare() {
+		return nil, nil, errors.New("matrix isn't square")
+	}
+	n := m.rows
+
+	uData, lData := init2dSlice(n, n), init2dSlice(n, n)
+	for i := 0; i < n; i++ {
+		lData[i][i] = 1
+		for j := 0; j < n; j++ {
+			if i <= j {
+				var sum float64
+				for k := 0; k <= i - 1; k++ {
+					sum += lData[i][k] * uData[k][j]
+				}
+				uData[i][j] = m.data[i][j] - sum
+			} else {
+				var sum float64
+				for k := 0; k <= j - 1; k++ {
+					sum += lData[i][k] * uData[k][j]
+				}
+				lData[i][j] = (m.data[i][j] - sum) / uData[j][j]
+			}
+		}
+	}
+
+	return &Matrix{lData, n, n}, &Matrix{uData, n, n}, nil
+}
+
+func (m *Matrix) DetLU() (float64, error) {
+	if !m.IsSquare() {
+		return -1, errors.New("matrix isn't square")
+	}
+
+	n := m.rows
+	_, u, err := LU(m)
+	if err != nil {
+		return -1, err
+	}
+
+	res := float64(1)
+	for i := 0; i < n; i++ {
+		res *= u.data[i][i]
+	}
+
+	return res, nil
+}
+
+func (m *Matrix) InverseLU() (*Matrix, error) {
+	if !m.IsSquare() {
+		return nil, errors.New("matrix isn't square")
+	}
+
+	d, err := m.DetLU()
+	if err != nil {
+		return nil, err
+	}
+	if math.Abs(d) <= Epsilon || math.IsNaN(d) {
+		return nil, errors.New("matrix is singular")
+	}
+
+	n := m.rows
+
+	l, u, err := LU(m)
+	if err != nil {
+		return nil, err
+	}
+
+	resData := init2dSlice(n, n)
+	// ***Using Gauss***
+	//for i := 0; i < n; i++ {
+	//	resData[i][i] = 1
+	//}
+	//
+	//for i := 0; i < n; i++ {
+	//	f := make([]float64, n)
+	//	f[i] = 1
+	//
+	//	resI, _ := LUSolve(l, u, f)
+	//	resData[i] = resI
+	//}
+	//
+	//resTrans := &Matrix{resData, n, n}
+	//
+	//return TransposeMat(resTrans), nil
+
+	// ***Iterative***
+	for i := n - 1; i >= 0; i-- {
+		for j := n - 1; j >= 0; j-- {
+			if i < j {
+				var sum float64
+				for k := i + 1; k < n; k++ {
+					sum += u.data[i][k] * resData[k][j]
+				}
+				resData[i][j] = -sum / u.data[i][i]
+			} else if i == j {
+				var sum float64
+				for k := j + 1; k < n; k++ {
+					sum += u.data[j][k] * resData[k][j]
+				}
+				resData[j][i] = (1 - sum) / u.data[j][j]
+			} else {
+				var sum float64
+				for k := j + 1; k < n; k++ {
+					sum += resData[i][k] * l.data[k][j]
+				}
+				resData[i][j] = -sum
+			}
+		}
+	}
+
+	return &Matrix{resData, n, n}, nil
 }

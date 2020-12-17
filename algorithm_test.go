@@ -1,11 +1,29 @@
 package algnum
 
 import (
+	"fmt"
+	"gonum.org/v1/gonum/mat"
 	"math"
 	"math/rand"
 	"testing"
 	"time"
 )
+
+func lapackSolve(m [][]float64, n int, f []float64) ([]float64, error) {
+	var mVec []float64
+	for i := 0; i < n; i++ {
+		mVec = append(mVec, m[i]...)
+	}
+	gonumA := mat.NewDense(n, n, mVec)
+	gonumF := mat.NewVecDense(n, f)
+	result := mat.NewVecDense(n, nil)
+
+	err := result.SolveVec(gonumA, gonumF)
+	if err != nil {
+		return nil, err
+	}
+	return result.RawVector().Data, nil
+}
 
 func randData(rows, cols int, min, max int) [][]float64 {
 	rand.Seed(time.Now().UnixNano())
@@ -18,6 +36,25 @@ func randData(rows, cols int, min, max int) [][]float64 {
 	for i := range res {
 		for j := range res {
 			res[i][j] = float64(rand.Intn(max - min) + min)
+		}
+	}
+
+	return res
+}
+
+func randSymData(rows, cols int, min, max int) [][]float64 {
+	rand.Seed(time.Now().UnixNano())
+
+	res := make([][]float64, rows)
+	for i := range res {
+		res[i] = make([]float64, cols)
+	}
+
+	for i := range res {
+		for j := 0; j <= i; j++ {
+			r := float64(rand.Intn(max - min) + min)
+			res[i][j] = r
+			res[j][i] = r
 		}
 	}
 
@@ -476,4 +513,130 @@ func TestCholesky(t *testing.T) {
 	} else {
 		t.Log("seidel works correct, input:\nA = ", mat.ToStr(), "\nf = ", VectToStr(f), "\nresult:", VectToStr(res), "\ncheck:", VectToStr(check))
 	}
+}
+
+func TestMinMaxEigenvalues(t *testing.T) {
+	aData := [][]float64 {
+		{7, 0.5},
+		{0.5, 1},
+	}
+	a, _ := InitMat(aData)
+
+	min, max, err := MinMaxEigenvalues(a)
+	if err != nil {
+		t.Fatal(err)
+	} else {
+		t.Log(min, max)
+	}
+
+	rData := randDiagSym(100, 100, 1, 10)
+	r, _ := InitMat(rData)
+
+	minR, maxR, err := MinMaxEigenvalues(r)
+	if err != nil {
+		t.Fatal(err)
+	} else {
+		t.Log(minR, maxR)
+	}
+}
+
+func TestFixedPointIteration(t *testing.T) {
+	data := [][]float64{
+		{3, 1, 1},
+		{1, 3, 2},
+		{1, 2, 4},
+	}
+	mat, _ := InitMat(data)
+	f := []float64{1, 4, 2}
+
+	expectedRes := []float64{-0.0952, 1.52, -0.238}
+
+	res, err := FixedPointIteration(mat, f)
+	if err != nil {
+		t.Fatal(err)
+	} else if !VectsEq(expectedRes, res, 1e-2) {
+		t.Fatalf("result is wrong: expected\n %s,\ngot\n %s", VectToStr(expectedRes), VectToStr(res))
+	} else {
+		t.Log("fixed-point iteration works correct, input:\nA = ", mat.ToStr(), "\nf = ", VectToStr(f), "\nresult:", VectToStr(res))
+	}
+
+	dataN := randDiagSym(1000, 1000, 1, 10)
+	matN, _ := InitMat(dataN)
+	fN := randFree(1000, 1, 10)
+
+	resN, err := FixedPointIteration(matN, fN)
+	if err != nil {
+		t.Fatal(err)
+	}
+	check, err := MatVecMul(matN, resN)
+	if err != nil {
+		t.Fatal(err)
+	} else if !VectsEq(fN, check, 1e-2) {
+		t.Fatalf("result is wrong, input:\nA = %s\nf = %s\nres = %s\ncheck:%s", matN.ToStr(), VectToStr(fN), VectToStr(resN), VectToStr(check))
+	} else {
+		t.Log("fixed-point iteration works correct, input:\nA = ", matN.ToStr(), "\nf = ", VectToStr(fN), "\nresult:", VectToStr(resN), "\ncheck:", VectToStr(check))
+	}
+}
+
+func TestMyMinMaxEigenvalues(t *testing.T) {
+	aData := [][]float64 {
+		{7, 0.5},
+		{0.5, 1},
+	}
+	a, _ := InitMat(aData)
+
+	min, max, err := MyMinMaxEigenvalues(a)
+	if err != nil {
+		t.Fatal(err)
+	} else {
+		t.Log(min, max)
+	}
+
+	rData := randDiagSym(1000, 1000, 1, 10)
+	r, _ := InitMat(rData)
+
+	start := time.Now()
+	minR, maxR, err := MinMaxEigenvalues(r)
+	if err != nil {
+		t.Fatal(err)
+	} else {
+		t.Log(minR, maxR)
+	}
+	stop := time.Since(start)
+
+	startMy := time.Now()
+	minR, maxR, err = MyMinMaxEigenvalues(r)
+	if err != nil {
+		t.Fatal(err)
+	} else {
+		t.Log(minR, maxR)
+	}
+	stopMy := time.Since(startMy)
+
+	fmt.Println(stop.Seconds(), stopMy.Seconds())
+}
+
+func TestLUSolve(t *testing.T) {
+	dataN := randData(100, 100, 1, 10)
+	matN, _ := InitMat(dataN)
+	fN := randFree(100, 1, 10)
+
+	l, u, err := LU(matN)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	resN, err := LUSolve(l, u, fN)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	lapack, err := lapackSolve(dataN, len(dataN), fN)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	sub, _ := VecsSub(resN, lapack)
+	n := VecNorm(sub, EuclideanNorm)
+	t.Logf("LU-solve norm: %0.15f", n)
 }
